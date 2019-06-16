@@ -74,14 +74,14 @@ class OAuth2SwiftTests: XCTestCase {
 			state = extractedState ?? ""
 		}
         let _ = oauth.authorize(
-            withCallbackURL: URL(string:callbackURL)!, scope: "all", state: state, parameters: [:],
-            success: { credential, response, parameters in
+            withCallbackURL: URL(string:callbackURL)!, scope: "all", state: state, parameters: [:]) { result in
+            switch result {
+            case .success:
                 expectation.fulfill()
-            },
-            failure: { error in
+            case .failure(let error):
                 XCTFail("The failure handler should not be called.\(error)")
             }
-        )
+        }
         
         waitForExpectations(timeout: DefaultTimeout, handler: nil)
         
@@ -122,22 +122,21 @@ class OAuth2SwiftTests: XCTestCase {
         
         let state = generateState(withLength: 20)
         let _ = oauth.authorize(
-            withCallbackURL: URL(string:callbackURL)!, scope: "all", state: state, parameters: [:],
-            success: { credential, response, parameters in
+        withCallbackURL: URL(string:callbackURL)!, scope: "all", state: state, parameters: [:]) { result in
+            switch result {
+            case .success:
                 XCTFail("The success handler should not be called.")
-            },
-            failure: { error in
+            case .failure:
                 expectation.fulfill()
             }
-        )
+        }
         
         waitForExpectations(timeout: DefaultTimeout, handler: nil)
     }
     
     func testExpire() {
         let expectation = self.expectation(description: "request should failed")
-        
-        
+
         let oauth = OAuth2Swift(
             consumerKey: server.valid_key,
             consumerSecret: server.valid_secret,
@@ -145,40 +144,36 @@ class OAuth2SwiftTests: XCTestCase {
             accessTokenUrl: server.accessTokenURLV2,
             responseType: "code"
         )
-        let _ = oauth.client.get(
-            server.expireURLV2, parameters: [:],
-            success: { data, response in
-                XCTFail("data receive \(data).")
-            },
-            failure: { error in
+        let _ = oauth.client.get(server.expireURLV2, parameters: [:]) { result in
+            switch result {
+            case .success(let response):
+                XCTFail("data receive \(response.data).")
+            case .failure(let error):
                 switch error {
                 case .tokenExpired(let error):
                     expectation.fulfill()
                     
                     // additional check about origin error
-                    let nserror = error as! NSError
-                    print(nserror.code)
-                    if nserror.code == 401 {
-                        if let reponseHeaders = nserror.userInfo["Response-Headers"] as? [String:String],
+                    let nserror = error as NSError?
+                    if nserror?.code == 401 {
+                        if let reponseHeaders = nserror?.userInfo["Response-Headers"] as? [String:String],
                             let authenticateHeader = reponseHeaders["WWW-Authenticate"] ?? reponseHeaders["Www-Authenticate"] {
                             print(authenticateHeader)
                             
                             
                             let headerDictionary = authenticateHeader.headerDictionary
-                            print(headerDictionary["error"])
-                            print(headerDictionary["error_description"])
+                            print(headerDictionary["error"] ?? "no error")
+                            print(headerDictionary["error_description"] ?? "no error description")
                         }
                         else {
-                            XCTFail("\(error).")
+                            XCTFail("\(String(describing: error)).")
                         }
                     }
                 default:
                     XCTFail("Wrong exception type \(error)")
                 }
             }
-        )
+        }
         waitForExpectations(timeout: DefaultTimeout, handler: nil)
     }
-    
-
 }

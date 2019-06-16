@@ -12,7 +12,7 @@ import XCTest
 
 let DefaultTimeout: TimeInterval = 10
 class OAuth1SwiftTests: XCTestCase {
-
+    
     static let server = TestServer()
     var server: TestServer { return OAuth1SwiftTests.server }
     
@@ -30,7 +30,6 @@ class OAuth1SwiftTests: XCTestCase {
         server.stop()
         super.tearDown()
     }
-    
     
     let callbackURL = "test://callback"
     
@@ -51,28 +50,32 @@ class OAuth1SwiftTests: XCTestCase {
         
         let expectation = self.expectation(description: "request should succeed")
         
-        let _ = oauth.authorize(withCallbackURL: URL(string:callbackURL)!,
-            success: { (credential, response, parameters) -> Void in
+        let _ = oauth.authorize(withCallbackURL: URL(string:callbackURL)!) { result in
+            switch result {
+            case .success:
                 expectation.fulfill()
-            },
-            failure:  { (error) -> Void in
+            case .failure(let error):
                 XCTFail("The failure handler should not be called.\(error)")
-        })
+            }
+        }
         
         waitForExpectations(timeout: DefaultTimeout, handler: nil)
         
         XCTAssertEqual(oauth.client.credential.oauthToken, server.oauth_token)
         XCTAssertEqual(oauth.client.credential.oauthTokenSecret, server.oauth_token_secret)
     }
-
-    func testOAuthbinSuccess() {
+    
+    // MARK: OAuthBin: not respoding anymore, TODO new test on fake server must be implemented
+    let requestTokenUrl = "http://www.oauthbin.com/v1/request-token"
+    let accessTokenUrl = "http://www.oauthbin.com/v1/access-token"
+    func _testOAuthbinSuccess() {
         let fakeAuthorizeURL = "automatic://host/autorize"
         let oauth = OAuth1Swift(
             consumerKey: "key",
             consumerSecret: "secret",
-            requestTokenUrl: "http://oauthbin.com/v1/request-token",
+            requestTokenUrl: requestTokenUrl,
             authorizeUrl: fakeAuthorizeURL,
-            accessTokenUrl: "http://oauthbin.com/v1/access-token"
+            accessTokenUrl: accessTokenUrl
         )
         oauth.allowMissingOAuthVerifier = true
         oauth.authorizeURLHandler = TestOAuthSwiftURLHandler(
@@ -83,15 +86,14 @@ class OAuth1SwiftTests: XCTestCase {
         
         let expectation = self.expectation(description: "request should succeed")
         
-        let _ = oauth.authorize(
-            withCallbackURL: URL(string:callbackURL)!,
-            success: { credential, response, parameters in
+        let _ = oauth.authorize(withCallbackURL: URL(string:callbackURL)!) { result in
+            switch result {
+            case .success:
                 expectation.fulfill()
-            },
-            failure:  { e in
+            case .failure(let e):
                 XCTFail("The failure handler should not be called. \(e)")
             }
-        )
+        }
         
         waitForExpectations(timeout: DefaultTimeout, handler: nil)
         
@@ -101,14 +103,14 @@ class OAuth1SwiftTests: XCTestCase {
         XCTAssertEqual(oauth.client.credential.oauthTokenSecret, oauth_token_secret)
     }
     
-    func testOAuthbinBadConsumerKey() {
+    func _testOAuthbinBadConsumerKey() {
         let fakeAuthorizeURL = "automatic://host/autorize"
         let oauth = OAuth1Swift(
             consumerKey: "badkey",
             consumerSecret: "secret",
-            requestTokenUrl: "http://oauthbin.com/v1/request-token",
+            requestTokenUrl: requestTokenUrl,
             authorizeUrl: fakeAuthorizeURL,
-            accessTokenUrl: "http://oauthbin.com/v1/access-token"
+            accessTokenUrl: accessTokenUrl
         )
         oauth.allowMissingOAuthVerifier = true
         oauth.authorizeURLHandler = TestOAuthSwiftURLHandler(
@@ -119,28 +121,27 @@ class OAuth1SwiftTests: XCTestCase {
         
         let expectation = self.expectation(description: "request should failed")
         
-        let _ = oauth.authorize(
-            withCallbackURL: URL(string:callbackURL)!,
-            success: { credential, response, parameters in
+        let _ = oauth.authorize(withCallbackURL: URL(string:callbackURL)!) { result in
+            switch result {
+            case .success:
                 XCTFail("The success handler should not be called.")
-            },
-            failure: { error in
+            case .failure:
                 //  check exact exception ? missing token?
                 expectation.fulfill()
             }
-        )
+        }
         
         waitForExpectations(timeout: DefaultTimeout, handler: nil)
     }
     
-    func testOAuthbinBadConsumerSecret() {
+    func _testOAuthbinBadConsumerSecret() {
         let fakeAuthorizeURL = "automatic://host/autorize"
         let oauth = OAuth1Swift(
             consumerKey: "key",
             consumerSecret: "badsecret",
-            requestTokenUrl: "http://oauthbin.com/v1/request-token",
+            requestTokenUrl: requestTokenUrl,
             authorizeUrl: fakeAuthorizeURL,
-            accessTokenUrl: "http://oauthbin.com/v1/access-token"
+            accessTokenUrl: accessTokenUrl
         )
         oauth.allowMissingOAuthVerifier = true
         oauth.authorizeURLHandler = TestOAuthSwiftURLHandler(
@@ -151,19 +152,16 @@ class OAuth1SwiftTests: XCTestCase {
         
         let expectation = self.expectation(description: "request should failed")
         
-        let _ = oauth.authorize(
-            withCallbackURL: callbackURL,
-            success: { credential, response, parameters in
+        let _ = oauth.authorize(withCallbackURL: callbackURL) { result in
+            switch result {
+            case .success:
                 XCTFail("The success handler should not be called.")
-            },
-            failure:  { error in
+            case .failure:
                 expectation.fulfill()
             }
-        )
+        }
         
         waitForExpectations(timeout: DefaultTimeout, handler: nil)
     }
-
     
 }
- 

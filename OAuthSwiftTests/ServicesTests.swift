@@ -64,11 +64,11 @@ class ServicesTests: XCTestCase {
         }
     }
     
-    func _testDropBox() {
+    func testDropBox() {
         testService("Dropbox")
     }
     
-    func _testBitBucket() {
+    func testBitBucket() {
         testService("BitBucket")
     }
     
@@ -121,15 +121,15 @@ class ServicesTests: XCTestCase {
 
         let expectation = self.expectation(description: service)
         
-        let _ = oauthswift.authorize(withCallbackURL: URL(string: callbackURL)!, success: {
-            credential, response, parameters in
-               expectation.fulfill()
-            
-               print("\(service) token ok")
-            }, failure: { error in
+        let _ = oauthswift.authorize(withCallbackURL: URL(string: callbackURL)!) { result in
+            switch result {
+            case .success:
+                expectation.fulfill()
+                print("\(service) token ok")
+            case .failure(let error):
                 print(error.localizedDescription)
             }
-        )
+        }
 
         self.waitForExpectations(timeout: 20) { (error) -> Void in
             if let e = error {
@@ -161,15 +161,16 @@ class ServicesTests: XCTestCase {
         let expectation = self.expectation(description: service)
         
         let state = generateState(withLength: 20)
-        let _ = oauthswift.authorize(withCallbackURL: URL(string: callbackURL)!, scope: scope, state: state, success: {
-            credential, response, parameters in
-            expectation.fulfill()
-            
-            print("\(service) token ok")
-            }, failure: { error in
+        let _ = oauthswift.authorize(withCallbackURL: URL(string: callbackURL)!, scope: scope, state: state) { result in
+            switch result {
+            case .success:
+                expectation.fulfill()
+                
+                print("\(service) token ok")
+            case .failure(let error):
                 print(error.localizedDescription)
             }
-        )
+        }
         
         self.waitForExpectations(timeout: 20) { (error) -> Void in
             if let e = error {
@@ -199,7 +200,6 @@ class ServicesURLHandlerType: LayoutEngineNavigationDelegate, OAuthSwiftURLHandl
         browser = Erik(webView: webView)
         super.init()
         webView.navigationDelegate = self
-        (browser.layoutEngine as? WebKitLayoutEngine)?.navigable = self
         
         guard let _ = self.serviceParameters["form_username_selector"],
             let _ = self.serviceParameters["form_password_selector"],
@@ -308,7 +308,7 @@ class ServicesURLHandlerType: LayoutEngineNavigationDelegate, OAuthSwiftURLHandl
                 }
             }
             else {
-                XCTFail("\(self.service): Cannot handle \(url) \(error)")
+                XCTFail("\(self.service): Cannot handle \(url) \(String(describing: error))")
             }
         }
     }
@@ -319,11 +319,11 @@ class ServicesURLHandlerType: LayoutEngineNavigationDelegate, OAuthSwiftURLHandl
             if let button = doc.querySelector(autorizeButton) {
                 button.click()
             } else {
-                print(doc.toHTML)
-                XCTFail("\(self.service): \(autorizeButton) not found to valid authentification]. \(self.browser.url)")
+                print(doc.toHTML ?? "ERROR: no HTML doc")
+                XCTFail("\(self.service): \(autorizeButton) not found to valid authentification]. \(String(describing: self.browser.url))")
             }
         } else if !self.handled {
-            XCTFail("\(self.service): No [authorize_button_selector) to valid authentification]. \(self.browser.url)")
+            XCTFail("\(self.service): No [authorize_button_selector) to valid authentification]. \(String(describing: self.browser.url))")
         }
     }
     
